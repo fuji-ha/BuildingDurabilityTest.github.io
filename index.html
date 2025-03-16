@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>物理ベースの建築ゲーム</title>
+  <style>
+    body { margin: 0; padding: 0; font-family: sans-serif; }
+    #gameContainer { position: relative; }
+    canvas { display: block; background: #fafafa; }
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(255, 255, 255, 0.8);
+      padding: 10px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div id="gameContainer">
+    <div id="controls">
+      <button id="startTest">耐久テスト開始</button>
+      <p>ブロックをドラッグして建物を作ろう！</p>
+    </div>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+  </div>
+
+  <!-- Matter.js のライブラリをCDNから読み込み -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+  <script>
+    // Matter.js の主要モジュールをエイリアス化
+    const { Engine, Render, Runner, World, Bodies, Body, Events, Mouse, MouseConstraint } = Matter;
+
+    // エンジンとワールドの作成
+    const engine = Engine.create();
+    const world = engine.world;
+
+    // レンダラーの設定
+    const canvas = document.getElementById('gameCanvas');
+    const render = Render.create({
+      canvas: canvas,
+      engine: engine,
+      options: {
+        width: 800,
+        height: 600,
+        wireframes: false,
+        background: '#fafafa'
+      }
+    });
+    Render.run(render);
+
+    // ランナー（ゲームループ）の作成
+    const runner = Runner.create();
+    Runner.run(runner, engine);
+
+    // 地面（固定オブジェクト）の追加
+    const ground = Bodies.rectangle(400, 580, 810, 60, { isStatic: true, render: { fillStyle: '#060a19' } });
+    World.add(world, ground);
+
+    // 初期ブロック群の作成（プレイヤーが配置する部品）
+    const blocks = [];
+    const blockSize = 60; // ブロックのサイズ（幅・高さ）
+    // ブロックの数を8にする（間隔を少しあけて配置）
+    for (let i = 0; i < 8; i++) {
+      let block = Bodies.rectangle(150 + i * (blockSize + 20), 100, blockSize, blockSize, {
+        restitution: 0.1,
+        friction: 0.5,
+        render: { fillStyle: '#3498db' }
+      });
+      blocks.push(block);
+      World.add(world, block);
+    }
+
+    // マウスコントロールの追加（ブロックのドラッグ操作）
+    const mouse = Mouse.create(render.canvas);
+    const mouseConstraint = MouseConstraint.create(engine, {
+      mouse: mouse,
+      constraint: {
+        stiffness: 0.2,
+        render: { visible: false }
+      }
+    });
+    World.add(world, mouseConstraint);
+    render.mouse = mouse;
+
+    // 耐久テスト用の「風」や「衝撃」をシミュレートするボタンイベント
+    document.getElementById('startTest').addEventListener('click', function() {
+      // 各ブロックにランダムな力を加える
+      blocks.forEach(block => {
+        const forceMagnitude = 0.02 * block.mass;
+        Body.applyForce(block, block.position, {
+          x: (Math.random() - 0.5) * forceMagnitude,
+          y: -forceMagnitude
+        });
+      });
+
+      // 数秒後に建物の高さを判定する
+      setTimeout(function() {
+        let topY = Infinity;
+        let bottomY = -Infinity;
+        blocks.forEach(block => {
+          // 中心位置からブロックの上端・下端を計算（ブロックの高さは blockSize）
+          let blockTop = block.position.y - blockSize / 2;
+          let blockBottom = block.position.y + blockSize / 2;
+          if(blockTop < topY) topY = blockTop;
+          if(blockBottom > bottomY) bottomY = blockBottom;
+        });
+
+        let buildingHeight = bottomY - topY;
+        const threshold = blockSize * 2.9; // 3ブロック分の高さ（例: 60px * 3 = 180px）
+        if (buildingHeight < threshold) {
+          alert('建物が崩れました！高さ: ' + Math.round(buildingHeight) + ' (必要な高さ: ' + threshold + '以上)');
+        } else {
+          alert('耐久テスト成功！価値のある建物です！高さ: ' + Math.round(buildingHeight));
+        }
+      }, 3000); // 3秒後に判定
+    });
+
+    // 衝突イベントの例（必要に応じて追加の処理を実装可能）
+    Events.on(engine, 'collisionStart', function(event) {
+      event.pairs.forEach(pair => {
+        // 例: 衝突時のエフェクト処理を追加
+      });
+    });
+
+    // 画面サイズに応じたリサイズ（オプション）
+    window.addEventListener('resize', function() {
+      render.canvas.width = window.innerWidth;
+      render.canvas.height = window.innerHeight;
+    });
+  </script>
+</body>
+</html>
