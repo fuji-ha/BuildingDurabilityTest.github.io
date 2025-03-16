@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>物理ベースの建築ゲーム</title>
+  <title>建物耐久テスト</title>
   <style>
     body { margin: 0; padding: 0; font-family: sans-serif; }
     #gameContainer { position: relative; }
@@ -97,10 +97,16 @@
 
       // 数秒後に建物の高さを判定する
       setTimeout(function() {
+        // 画面内にある（または少しはみ出している）ブロックのみを対象にする
+        const validBlocks = blocks.filter(block => block.position.y < canvas.height + blockSize/2);
+        if(validBlocks.length === 0) {
+          alert('すべてのブロックが画面外です。建物が崩壊しました！');
+          return;
+        }
         let topY = Infinity;
         let bottomY = -Infinity;
-        blocks.forEach(block => {
-          // 中心位置からブロックの上端・下端を計算（ブロックの高さは blockSize）
+        validBlocks.forEach(block => {
+          // 中心位置からブロックの上端・下端を計算
           let blockTop = block.position.y - blockSize / 2;
           let blockBottom = block.position.y + blockSize / 2;
           if(blockTop < topY) topY = blockTop;
@@ -108,7 +114,7 @@
         });
 
         let buildingHeight = bottomY - topY;
-        const threshold = blockSize * 2.9; // 3ブロック分の高さ（例: 60px * 3 = 180px）
+        const threshold = 178; // 判定高さを178pxに変更
         if (buildingHeight < threshold) {
           alert('建物が崩れました！高さ: ' + Math.round(buildingHeight) + ' (必要な高さ: ' + threshold + '以上)');
         } else {
